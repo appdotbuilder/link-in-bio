@@ -1,25 +1,51 @@
+import { db } from '../db';
+import { linksTable } from '../db/schema';
 import { type UpdateLinkInput, type Link } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export async function updateLink(input: UpdateLinkInput): Promise<Link> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to:
-    // 1. Find the link by ID in the database
-    // 2. Verify that the user owns this link (authorization check)
-    // 3. Update only the provided fields
-    // 4. Update the updated_at timestamp
-    // 5. Return the updated link data
-    // 6. Throw error if link is not found or user is not authorized
-    
-    return Promise.resolve({
-        id: input.id,
-        user_id: 1, // Placeholder user ID
-        title: input.title || 'Updated Link Title',
-        url: input.url || 'https://example.com',
-        icon: input.icon !== undefined ? input.icon : null,
-        click_count: 0, // Preserve existing click count
-        is_active: input.is_active !== undefined ? input.is_active : true,
-        order_index: input.order_index !== undefined ? input.order_index : 0,
-        created_at: new Date('2024-01-01'),
-        updated_at: new Date() // Current timestamp for update
-    } as Link);
+  try {
+    // First, check if the link exists
+    const existingLink = await db.select()
+      .from(linksTable)
+      .where(eq(linksTable.id, input.id))
+      .execute();
+
+    if (existingLink.length === 0) {
+      throw new Error(`Link with id ${input.id} not found`);
+    }
+
+    // Build update object with only provided fields
+    const updateData: Partial<typeof linksTable.$inferInsert> = {
+      updated_at: new Date()
+    };
+
+    if (input.title !== undefined) {
+      updateData.title = input.title;
+    }
+    if (input.url !== undefined) {
+      updateData.url = input.url;
+    }
+    if (input.icon !== undefined) {
+      updateData.icon = input.icon;
+    }
+    if (input.is_active !== undefined) {
+      updateData.is_active = input.is_active;
+    }
+    if (input.order_index !== undefined) {
+      updateData.order_index = input.order_index;
+    }
+
+    // Update the link
+    const result = await db.update(linksTable)
+      .set(updateData)
+      .where(eq(linksTable.id, input.id))
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Link update failed:', error);
+    throw error;
+  }
 }

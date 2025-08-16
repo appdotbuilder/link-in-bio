@@ -1,13 +1,27 @@
-export async function deleteLink(linkId: number): Promise<{ success: boolean }> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to:
-    // 1. Find the link by ID in the database
-    // 2. Verify that the user owns this link (authorization check)
-    // 3. Delete the link from the database
-    // 4. Return success confirmation
-    // 5. Throw error if link is not found or user is not authorized
-    
-    return Promise.resolve({
-        success: true
-    });
-}
+import { db } from '../db';
+import { linksTable } from '../db/schema';
+import { eq } from 'drizzle-orm';
+
+export const deleteLink = async (linkId: number): Promise<{ success: boolean }> => {
+  try {
+    // First, verify the link exists
+    const existingLink = await db.select()
+      .from(linksTable)
+      .where(eq(linksTable.id, linkId))
+      .execute();
+
+    if (existingLink.length === 0) {
+      throw new Error('Link not found');
+    }
+
+    // Delete the link
+    const result = await db.delete(linksTable)
+      .where(eq(linksTable.id, linkId))
+      .execute();
+
+    return { success: true };
+  } catch (error) {
+    console.error('Link deletion failed:', error);
+    throw error;
+  }
+};
